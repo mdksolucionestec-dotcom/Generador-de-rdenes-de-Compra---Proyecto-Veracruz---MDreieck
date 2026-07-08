@@ -542,6 +542,26 @@ async function genPDF() {
     doc.text(String(val2||''), mid+2+doc.getTextWidth(label2)+3, rowY+h/2+1.5);
   }
 
+  // Reduce el tamaño de letra (hasta un mínimo) o trunca con "…" si el texto no cabe en el ancho disponible.
+  // Requiere que la familia/estilo de fuente ya esté configurada antes de llamarla.
+  function fitText(text, availW, baseSize, minSize) {
+    text = String(text || '');
+    minSize = minSize || 5;
+    let size = baseSize;
+    doc.setFontSize(size);
+    while (size > minSize && doc.getTextWidth(text) > availW) {
+      size -= 0.5;
+      doc.setFontSize(size);
+    }
+    if (doc.getTextWidth(text) > availW) {
+      while (text.length > 0 && doc.getTextWidth(text + '…') > availW) {
+        text = text.slice(0, -1);
+      }
+      text = text + '…';
+    }
+    return { text: text, size: size };
+  }
+
   // Fecha emision / entrega
   labelValRow('Fecha Emisión:', fecha, 'Fecha Entrega:', fechaEntrega, y);
   y += 8;
@@ -555,9 +575,16 @@ async function genPDF() {
   doc.text('Proveedor:', cA+2, y+5);
   doc.text('Lugar Entrega:', cA+(cEND-cA)/2+2, y+5);
   y += 9;
-  doc.setFont('helvetica','bold'); doc.setFontSize(12);
-  doc.text(proveedor||'', cA+2, y+3);
-  doc.text(lugarEntrega||'', cA+(cEND-cA)/2+2, y+3);
+  doc.setFont('helvetica','bold');
+  {
+    const halfW = (cEND-cA)/2;
+    const fp = fitText(proveedor, halfW-1-4, 12, 7);
+    doc.setFontSize(fp.size);
+    doc.text(fp.text, cA+2, y+3);
+    const fl = fitText(lugarEntrega, halfW-4, 12, 7);
+    doc.setFontSize(fl.size);
+    doc.text(fl.text, cA+halfW+2, y+3);
+  }
   y += 8;
 
   // Concepto / proyecto / OT / nombre
@@ -571,22 +598,41 @@ async function genPDF() {
   y += 7;
   const midx = cA+(cEND-cA)/2;
   fill(BLN); rect(cA, y, midx-cA-1, 7); thin(); rect(cA, y, midx-cA-1, 7, 'S');
-  doc.setFont('helvetica','normal'); doc.setFontSize(9);
-  doc.text(concepto||'', cA+2, y+5);
+  doc.setFont('helvetica','normal');
+  {
+    const fc = fitText(concepto, midx-cA-1-4, 9, 6);
+    doc.setFontSize(fc.size);
+    doc.text(fc.text, cA+2, y+5);
+  }
   fill(AZC); rect(midx, y, (cEND-midx)/2, 7); thin(); rect(midx, y, (cEND-midx)/2, 7, 'S');
   doc.setFont('helvetica','bold'); doc.setFontSize(8);
   doc.text('O.T. No.:', midx+2, y+5);
   doc.setFont('helvetica','normal');
-  doc.text(otNum||'', midx+18, y+5);
+  {
+    const otAvailW = (cEND-midx)/2 - 18 - 2;
+    const fo = fitText(otNum, otAvailW, 8, 5);
+    doc.setFontSize(fo.size);
+    doc.text(fo.text, midx+18, y+5);
+  }
   fill(BLN); rect(midx+(cEND-midx)/2, y, (cEND-midx)/2, 7); thin(); rect(midx+(cEND-midx)/2, y, (cEND-midx)/2, 7, 'S');
-  doc.text(proyecto||'', midx+(cEND-midx)/2+2, y+5);
+  {
+    const pAvailW = (cEND-midx)/2 - 4;
+    const fpr = fitText(proyecto, pAvailW, 8, 5);
+    doc.setFontSize(fpr.size);
+    doc.text(fpr.text, midx+(cEND-midx)/2+2, y+5);
+  }
   y += 7;
   fill(AZC); rect(midx, y, (cEND-midx)/2, 7); thin(); rect(midx, y, (cEND-midx)/2, 7, 'S');
   doc.setFont('helvetica','bold'); doc.setFontSize(8);
   doc.text('Nombre:', midx+2, y+5);
   doc.setFont('helvetica','normal');
   fill(BLN); rect(midx+(cEND-midx)/2, y, (cEND-midx)/2, 7); thin(); rect(midx+(cEND-midx)/2, y, (cEND-midx)/2, 7, 'S');
-  doc.text(responsable||'', midx+(cEND-midx)/2+2, y+5);
+  {
+    const nAvailW = (cEND-midx)/2 - 4;
+    const fn = fitText(responsable, nAvailW, 8, 5);
+    doc.setFontSize(fn.size);
+    doc.text(fn.text, midx+(cEND-midx)/2+2, y+5);
+  }
   y += 9;
 
   // N Factura / Importe / USD-MN / Total
@@ -595,7 +641,12 @@ async function genPDF() {
   doc.setFont('helvetica','bold'); doc.setFontSize(8);
   doc.text('N° Factura', cA+2, y+5);
   doc.setFont('helvetica','normal');
-  doc.text(numFactura||'', cA+22, y+5);
+  {
+    const nfAvailW = fw4-1-22-2;
+    const ff = fitText(numFactura, nfAvailW, 8, 5);
+    doc.setFontSize(ff.size);
+    doc.text(ff.text, cA+22, y+5);
+  }
 
   fill(AZC); rect(cA+fw4, y, fw4-1, 7); thin(); rect(cA+fw4, y, fw4-1, 7,'S');
   doc.setFont('helvetica','bold');
@@ -611,8 +662,13 @@ async function genPDF() {
   txtc(moneda==='MXN'?BLN:NGR); doc.text('MN', usdX+fw4/2+5, y+5); txtc(NGR);
 
   fill(BLN); rect(cA+fw4*3, y, fw4-1, 7); thin(); rect(cA+fw4*3, y, fw4-1, 7,'S');
-  doc.setFont('helvetica','bold'); doc.setFontSize(11);
-  doc.text('$'+total.toLocaleString('es-MX',{minimumFractionDigits:2}), cA+fw4*3+2, y+5);
+  doc.setFont('helvetica','bold');
+  {
+    const totalStr = '$'+total.toLocaleString('es-MX',{minimumFractionDigits:2});
+    const ft = fitText(totalStr, fw4-1-4, 11, 6);
+    doc.setFontSize(ft.size);
+    doc.text(ft.text, cA+fw4*3+2, y+5);
+  }
   y += 10;
 
   // TRANSFERENCIA en grande + forma de pago
@@ -645,21 +701,33 @@ async function genPDF() {
   doc.setFontSize(8); doc.setFont('helvetica','bold');
   doc.text('Banco',bx+1.5,y+5);
   doc.setFont('helvetica','normal');
-  doc.text((banco||'').substring(0,14),bx+16,y+5);
+  {
+    const fb = fitText(banco, bancoW-16-2, 8, 5);
+    doc.setFontSize(fb.size);
+    doc.text(fb.text, bx+16, y+5);
+  }
 
   fill(AZC); rect(sx,y,12,7); fill(BLN); rect(sx+12,y,13,7);
   thin(); rect(sx,y,25,7,'S');
-  doc.setFont('helvetica','bold');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8);
   doc.text('Suc',sx+1.5,y+5);
   doc.setFont('helvetica','normal');
-  doc.text((sucursal||'').substring(0,6),sx+13,y+5);
+  {
+    const fs = fitText(sucursal, 13-2, 8, 5);
+    doc.setFontSize(fs.size);
+    doc.text(fs.text, sx+13, y+5);
+  }
 
   fill(AZC); rect(cx,y,ctaLblW,7); fill(BLN); rect(cx+ctaLblW,y,cEND-cx-ctaLblW,7);
   thin(); rect(cx,y,cEND-cx,7,'S');
-  doc.setFont('helvetica','bold');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8);
   doc.text('Num. Cta',cx+1.5,y+5);
   doc.setFont('helvetica','normal');
-  doc.text((numCuenta||'').substring(0,20),cx+ctaLblW+1,y+5);
+  {
+    const fcta = fitText(numCuenta, (cEND-cx-ctaLblW)-3, 8, 5);
+    doc.setFontSize(fcta.size);
+    doc.text(fcta.text, cx+ctaLblW+1, y+5);
+  }
   y += 9;
 
   fill(AZC); rect(cA, y, 40, 7); fill(BLN); rect(cA+40, y, cEND-cA-40, 7);
@@ -667,7 +735,11 @@ async function genPDF() {
   doc.setFont('helvetica','bold'); doc.setFontSize(8);
   doc.text('Clabe Interbancaria', cA+2, y+5);
   doc.setFont('helvetica','normal');
-  doc.text(clabe||'', cA+42, y+5);
+  {
+    const fcl = fitText(clabe, cEND-(cA+42)-2, 8, 5);
+    doc.setFontSize(fcl.size);
+    doc.text(fcl.text, cA+42, y+5);
+  }
   y += 11;
 
   // Tabla de partidas
