@@ -593,8 +593,8 @@ async function genPDF() {
   thin(); rect(cA, y, (cEND-cA)/2-1, 7, 'S');
   thin(); rect(cA+(cEND-cA)/2, y, (cEND-cA)/2, 7, 'S');
   doc.setFont('helvetica','bold'); doc.setFontSize(8);
-  doc.text('Concepto del pago:', cA+2, y+5);
-  doc.text('Proyecto:', cA+(cEND-cA)/2+2, y+5);
+  doc.text('Concepto del pago', cA+2, y+5);
+  doc.text('Proyecto', cA+(cEND-cA)/2+2, y+5);
   y += 7;
   const midx = cA+(cEND-cA)/2;
   fill(BLN); rect(cA, y, midx-cA-1, 7); thin(); rect(cA, y, midx-cA-1, 7, 'S');
@@ -606,7 +606,7 @@ async function genPDF() {
   }
   fill(AZC); rect(midx, y, (cEND-midx)/2, 7); thin(); rect(midx, y, (cEND-midx)/2, 7, 'S');
   doc.setFont('helvetica','bold'); doc.setFontSize(8);
-  doc.text('O.T. No.:', midx+2, y+5);
+  doc.text('O.T. No.', midx+2, y+5);
   doc.setFont('helvetica','normal');
   {
     const otAvailW = (cEND-midx)/2 - 18 - 2;
@@ -624,7 +624,7 @@ async function genPDF() {
   y += 7;
   fill(AZC); rect(midx, y, (cEND-midx)/2, 7); thin(); rect(midx, y, (cEND-midx)/2, 7, 'S');
   doc.setFont('helvetica','bold'); doc.setFontSize(8);
-  doc.text('Nombre:', midx+2, y+5);
+  doc.text('Nombre', midx+2, y+5);
   doc.setFont('helvetica','normal');
   fill(BLN); rect(midx+(cEND-midx)/2, y, (cEND-midx)/2, 7); thin(); rect(midx+(cEND-midx)/2, y, (cEND-midx)/2, 7, 'S');
   {
@@ -684,14 +684,16 @@ async function genPDF() {
   y += 6;
 
   // Cheque / Transferencia / Credito / Contado
-  const fw3 = (cEND-cA)/3;
-  fill(BLN); rect(cA, y, fw3-1, 7); thin(); rect(cA, y, fw3-1, 7,'S');
+  const fw4b = (cEND-cA)/4;
+  fill(BLN); rect(cA, y, fw4b-1, 7); thin(); rect(cA, y, fw4b-1, 7,'S');
   doc.setFont('helvetica','normal'); doc.setFontSize(8);
   doc.text('Cheque No. ' + (numCheque||''), cA+2, y+5);
-  fill(BLN); rect(cA+fw3, y, fw3-1, 7); thin(); rect(cA+fw3, y, fw3-1, 7,'S');
-  doc.text('Transferencia ' + (formaPago==='Transferencia'?'X':''), cA+fw3+2, y+5);
-  fill(BLN); rect(cA+fw3*2, y, fw3-1, 7); thin(); rect(cA+fw3*2, y, fw3-1, 7,'S');
-  doc.text('Crédito / Días  ' + (formaPago==='Contado'?'Contado':''), cA+fw3*2+2, y+5);
+  fill(BLN); rect(cA+fw4b, y, fw4b-1, 7); thin(); rect(cA+fw4b, y, fw4b-1, 7,'S');
+  doc.text('Transferencia ' + (formaPago==='Transferencia'?'X':''), cA+fw4b+2, y+5);
+  fill(BLN); rect(cA+fw4b*2, y, fw4b-1, 7); thin(); rect(cA+fw4b*2, y, fw4b-1, 7,'S');
+  doc.text('Crédito / Días', cA+fw4b*2+2, y+5);
+  fill(BLN); rect(cA+fw4b*3, y, fw4b-1, 7); thin(); rect(cA+fw4b*3, y, fw4b-1, 7,'S');
+  doc.text('Contado ' + (formaPago==='Contado'?'X':''), cA+fw4b*3+2, y+5);
   y += 10;
 
   // Datos bancarios
@@ -700,68 +702,69 @@ async function genPDF() {
   doc.text('Datos bancarios para transferencia', cA+2, y+4.5);
   y += 8;
 
-  const bancoW=50, sucW=25, ctaLblW=20;
-  const bx=cA, sx=cA+bancoW, cx=cA+bancoW+sucW;
-  fill(AZC); rect(bx,y,15,7); fill(BLN); rect(bx+15,y,bancoW-15,7);
-  thin(); rect(bx,y,bancoW,7,'S');
+  // Banco, Suc, Num. Cta y Clabe en una sola fila (igual que el formato oficial)
+  const bBlk=40, sBlk=25, cBlk=41; // anchos de bloque: banco, suc, num.cta
+  const bx=cA, sx=cA+bBlk, cx=cA+bBlk+sBlk, clx=cA+bBlk+sBlk+cBlk;
+  const clBlk = cEND-clx;
+
+  fill(AZC); rect(bx,y,12,7); fill(BLN); rect(bx+12,y,bBlk-12,7);
+  thin(); rect(bx,y,bBlk,7,'S');
   doc.setFontSize(8); doc.setFont('helvetica','bold');
   doc.text('Banco',bx+1.5,y+5);
   doc.setFont('helvetica','normal');
   {
-    const fb = fitText(banco, bancoW-16-2, 8, 5);
+    const fb = fitText(banco, bBlk-12-3, 8, 5);
     doc.setFontSize(fb.size);
-    doc.text(fb.text, bx+16, y+5);
+    doc.text(fb.text, bx+13, y+5);
   }
 
-  fill(AZC); rect(sx,y,12,7); fill(BLN); rect(sx+12,y,13,7);
-  thin(); rect(sx,y,25,7,'S');
+  fill(AZC); rect(sx,y,9,7); fill(BLN); rect(sx+9,y,sBlk-9,7);
+  thin(); rect(sx,y,sBlk,7,'S');
   doc.setFont('helvetica','bold'); doc.setFontSize(8);
   doc.text('Suc',sx+1.5,y+5);
   doc.setFont('helvetica','normal');
   {
-    const fs = fitText(sucursal, 13-2, 8, 5);
+    const fs = fitText(sucursal, sBlk-9-3, 8, 5);
     doc.setFontSize(fs.size);
-    doc.text(fs.text, sx+13, y+5);
+    doc.text(fs.text, sx+10, y+5);
   }
 
-  fill(AZC); rect(cx,y,ctaLblW,7); fill(BLN); rect(cx+ctaLblW,y,cEND-cx-ctaLblW,7);
-  thin(); rect(cx,y,cEND-cx,7,'S');
+  fill(AZC); rect(cx,y,15,7); fill(BLN); rect(cx+15,y,cBlk-15,7);
+  thin(); rect(cx,y,cBlk,7,'S');
   doc.setFont('helvetica','bold'); doc.setFontSize(8);
   doc.text('Num. Cta',cx+1.5,y+5);
   doc.setFont('helvetica','normal');
   {
-    const fcta = fitText(numCuenta, (cEND-cx-ctaLblW)-3, 8, 5);
+    const fcta = fitText(numCuenta, cBlk-15-3, 8, 5);
     doc.setFontSize(fcta.size);
-    doc.text(fcta.text, cx+ctaLblW+1, y+5);
+    doc.text(fcta.text, cx+16, y+5);
   }
-  y += 9;
 
-  fill(AZC); rect(cA, y, 125, 7); fill(BLN); rect(cA+125, y, cEND-cA-125, 7);
-  thin(); rect(cA, y, cEND-cA, 7, 'S');
+  fill(AZC); rect(clx,y,46,7); fill(BLN); rect(clx+46,y,clBlk-46,7);
+  thin(); rect(clx,y,clBlk,7,'S');
   doc.setFont('helvetica','bold');
   {
-    const fclbl = fitText('Clabe Interbancaria (Colocar dígitos de 3 en 3)', 125-4, 8, 6);
+    const fclbl = fitText('Clabe Interbancaria (Colocar dígitos de 3 en 3)', 46-3, 7, 5);
     doc.setFontSize(fclbl.size);
-    doc.text(fclbl.text, cA+2, y+5);
+    doc.text(fclbl.text, clx+1.5, y+5);
   }
   doc.setFont('helvetica','normal');
   {
-    const fcl = fitText(clabe, (cEND-cA-125)-4, 8, 5);
+    const fcl = fitText(clabe, clBlk-46-3, 8, 5);
     doc.setFontSize(fcl.size);
-    doc.text(fcl.text, cA+127, y+5);
+    doc.text(fcl.text, clx+47, y+5);
   }
-  y += 11;
+  y += 9;
 
   // Tabla de partidas
   const colW = { partida: cB-cA, cant: cC-cB, desc: cF-cC, pu: cH-cF, imp: cEND-cH };
-  fill(AZL); rect(cA, y, cEND-cA, 6); thin(); rect(cA, y, cEND-cA, 6,'S');
-  txtc(BLN); doc.setFont('helvetica','bold'); doc.setFontSize(8);
-  doc.text('PARTIDA', cA+2, y+4.3);
-  doc.text('CANT.', cB+2, y+4.3);
-  doc.text('DESCRIPCIÓN', cC+2, y+4.3);
-  doc.text('P. UNITARIO', cF+2, y+4.3);
-  doc.text('IMPORTE', cH+2, y+4.3);
-  txtc(NGR);
+  fill(AZC); rect(cA, y, cEND-cA, 6); thin(); rect(cA, y, cEND-cA, 6,'S');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8);
+  doc.text('Partida', cA+2, y+4.3);
+  doc.text('Cantidad', cB+2, y+4.3);
+  doc.text('Descripción', cC+2, y+4.3);
+  doc.text('P. Unitario', cF+2, y+4.3);
+  doc.text('Importe', cH+2, y+4.3);
   y += 6;
 
   const rowH = 6;
