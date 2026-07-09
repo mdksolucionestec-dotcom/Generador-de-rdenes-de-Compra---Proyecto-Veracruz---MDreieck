@@ -563,7 +563,7 @@ async function genPDF() {
   }
 
   // Fecha emision / entrega
-  labelValRow('Fecha Emisión:', fecha, 'Fecha Entrega:', fechaEntrega, y);
+  labelValRow('Fecha de Emisión:', fecha, 'Fecha de Entrega:', fechaEntrega, y);
   y += 8;
 
   // Proveedor / lugar entrega
@@ -573,7 +573,7 @@ async function genPDF() {
   thin(); rect(cA+(cEND-cA)/2, y, (cEND-cA)/2, 7, 'S');
   doc.setFont('helvetica','bold'); doc.setFontSize(8);
   doc.text('Proveedor:', cA+2, y+5);
-  doc.text('Lugar Entrega:', cA+(cEND-cA)/2+2, y+5);
+  doc.text('Lugar Entrega', cA+(cEND-cA)/2+2, y+5);
   y += 9;
   doc.setFont('helvetica','bold');
   {
@@ -675,7 +675,13 @@ async function genPDF() {
   fill(GRS); rect(cA, y, cEND-cA, 8); thin(); rect(cA, y, cEND-cA, 8,'S');
   doc.setFont('helvetica','bold'); doc.setFontSize(11);
   doc.text(formaPago.toUpperCase(), cA+(cEND-cA)/2, y+5.5, {align:'center'});
-  y += 10;
+  y += 8;
+
+  // Forma de pago (etiqueta)
+  fill(AZC); rect(cA, y, cEND-cA, 5); thin(); rect(cA, y, cEND-cA, 5, 'S');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8);
+  doc.text('Forma de pago', cA+2, y+3.7);
+  y += 6;
 
   // Cheque / Transferencia / Credito / Contado
   const fw3 = (cEND-cA)/3;
@@ -685,7 +691,7 @@ async function genPDF() {
   fill(BLN); rect(cA+fw3, y, fw3-1, 7); thin(); rect(cA+fw3, y, fw3-1, 7,'S');
   doc.text('Transferencia ' + (formaPago==='Transferencia'?'X':''), cA+fw3+2, y+5);
   fill(BLN); rect(cA+fw3*2, y, fw3-1, 7); thin(); rect(cA+fw3*2, y, fw3-1, 7,'S');
-  doc.text('Crédito/Días  ' + (formaPago==='Contado'?'Contado':''), cA+fw3*2+2, y+5);
+  doc.text('Crédito / Días  ' + (formaPago==='Contado'?'Contado':''), cA+fw3*2+2, y+5);
   y += 10;
 
   // Datos bancarios
@@ -730,15 +736,19 @@ async function genPDF() {
   }
   y += 9;
 
-  fill(AZC); rect(cA, y, 40, 7); fill(BLN); rect(cA+40, y, cEND-cA-40, 7);
+  fill(AZC); rect(cA, y, 125, 7); fill(BLN); rect(cA+125, y, cEND-cA-125, 7);
   thin(); rect(cA, y, cEND-cA, 7, 'S');
-  doc.setFont('helvetica','bold'); doc.setFontSize(8);
-  doc.text('Clabe Interbancaria', cA+2, y+5);
+  doc.setFont('helvetica','bold');
+  {
+    const fclbl = fitText('Clabe Interbancaria (Colocar dígitos de 3 en 3)', 125-4, 8, 6);
+    doc.setFontSize(fclbl.size);
+    doc.text(fclbl.text, cA+2, y+5);
+  }
   doc.setFont('helvetica','normal');
   {
-    const fcl = fitText(clabe, cEND-(cA+42)-2, 8, 5);
+    const fcl = fitText(clabe, (cEND-cA-125)-4, 8, 5);
     doc.setFontSize(fcl.size);
-    doc.text(fcl.text, cA+42, y+5);
+    doc.text(fcl.text, cA+127, y+5);
   }
   y += 11;
 
