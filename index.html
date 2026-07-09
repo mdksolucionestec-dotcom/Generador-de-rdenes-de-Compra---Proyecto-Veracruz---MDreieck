@@ -821,11 +821,32 @@ async function genPDF() {
   doc.setFont('helvetica','bold'); doc.setFontSize(8);
   doc.text('COMENTARIOS O INSTRUCCIONES ESPECIALES', cA+2, y+4.5);
   y += 7;
-  fill(BLN); rect(cA, y, cEND-cA, 8); thin(); rect(cA, y, cEND-cA, 8, 'S');
-  doc.setFont('helvetica','normal'); doc.setFontSize(8);
-  const comLines = doc.splitTextToSize(comentarios||'', cEND-cA-4);
-  doc.text(comLines, cA+2, y+4.5);
-  y += 11;
+
+  doc.setFont('helvetica','normal');
+  let comFontSize = 8;
+  doc.setFontSize(comFontSize);
+  let comLines = doc.splitTextToSize(comentarios||'', cEND-cA-4);
+  let comLineH = comFontSize * 0.42;
+  let comBoxH = Math.max(8, comLines.length * comLineH + 3);
+  // Si el comentario es muy largo, reduce la letra para no empujar demasiado las firmas
+  while (comBoxH > 16 && comFontSize > 6) {
+    comFontSize -= 0.5;
+    doc.setFontSize(comFontSize);
+    comLines = doc.splitTextToSize(comentarios||'', cEND-cA-4);
+    comLineH = comFontSize * 0.42;
+    comBoxH = Math.max(8, comLines.length * comLineH + 3);
+  }
+  // Límite absoluto de seguridad: si aún así es demasiado largo, se recorta
+  if (comBoxH > 20) {
+    const maxLines = Math.max(1, Math.floor((20 - 3) / comLineH));
+    comLines = comLines.slice(0, maxLines);
+    comLines[comLines.length - 1] = comLines[comLines.length - 1] + ' …';
+    comBoxH = Math.max(8, comLines.length * comLineH + 3);
+  }
+  fill(BLN); rect(cA, y, cEND-cA, comBoxH); thin(); rect(cA, y, cEND-cA, comBoxH, 'S');
+  doc.setFontSize(comFontSize);
+  doc.text(comLines, cA+2, y+comLineH);
+  y += comBoxH + 3;
 
   // Firmas
   const fw = (cEND-cA)/3;
