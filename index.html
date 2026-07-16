@@ -277,6 +277,11 @@
     <div id="campoFirmaOtro" style="display:none;">
       <label>Nombre de quien firma</label>
       <input type="text" id="firmaOtroNombre" placeholder="Nombre completo">
+      <label>Dibuja la firma aquí (con el dedo o el mouse)</label>
+      <div style="border:2px solid #d5dbe6; border-radius:8px; overflow:hidden; background:#fff;">
+        <canvas id="firmaCanvas" style="width:100%; height:130px; display:block; touch-action:none; cursor:crosshair;"></canvas>
+      </div>
+      <button type="button" id="btnLimpiarFirma" style="margin-top:8px; background:#eef0fb; color:#1a1080; border:1px solid #1a1080; border-radius:6px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer;">Borrar y volver a firmar</button>
     </div>
   </div>
 
@@ -408,6 +413,76 @@ function selFirmaElabora(tipo, el) {
   document.querySelectorAll('#btnFirmaMariel,#btnFirmaFrancisco,#btnFirmaOtro').forEach(b => b.classList.remove('sel'));
   if (el) el.classList.add('sel');
   document.getElementById('campoFirmaOtro').style.display = (tipo === 'otro') ? 'block' : 'none';
+  if (tipo === 'otro') {
+    // El canvas necesita tener tamaño visible para inicializarse bien, por eso se espera un instante
+    setTimeout(initFirmaCanvas, 50);
+  }
+}
+
+/* ===================== CANVAS PARA DIBUJAR LA FIRMA A MANO ===================== */
+let firmaCtx = null;
+let firmaDrawing = false;
+let firmaTieneTrazo = false;
+let firmaCanvasListo = false;
+
+function initFirmaCanvas() {
+  const canvas = document.getElementById('firmaCanvas');
+  if (!canvas) return;
+  const ratio = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  if (!rect.width) return; // todavía no es visible, se reintentará
+  canvas.width = rect.width * ratio;
+  canvas.height = rect.height * ratio;
+  firmaCtx = canvas.getContext('2d');
+  firmaCtx.scale(ratio, ratio);
+  firmaCtx.fillStyle = '#ffffff';
+  firmaCtx.fillRect(0, 0, rect.width, rect.height);
+  firmaCtx.strokeStyle = '#14149C';
+  firmaCtx.lineWidth = 2.4;
+  firmaCtx.lineCap = 'round';
+  firmaCtx.lineJoin = 'round';
+  firmaTieneTrazo = false;
+
+  if (firmaCanvasListo) return; // no volver a poner los listeners si ya estaban puestos
+  firmaCanvasListo = true;
+
+  function getPos(e) {
+    const r = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: clientX - r.left, y: clientY - r.top };
+  }
+  function start(e) {
+    e.preventDefault();
+    firmaDrawing = true;
+    const p = getPos(e);
+    firmaCtx.beginPath();
+    firmaCtx.moveTo(p.x, p.y);
+  }
+  function move(e) {
+    if (!firmaDrawing) return;
+    e.preventDefault();
+    const p = getPos(e);
+    firmaCtx.lineTo(p.x, p.y);
+    firmaCtx.stroke();
+    firmaTieneTrazo = true;
+  }
+  function end() { firmaDrawing = false; }
+
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+  canvas.addEventListener('touchstart', start, {passive:false});
+  canvas.addEventListener('touchmove', move, {passive:false});
+  canvas.addEventListener('touchend', end);
+
+  document.getElementById('btnLimpiarFirma').onclick = function() {
+    const r = canvas.getBoundingClientRect();
+    firmaCtx.clearRect(0, 0, canvas.width, canvas.height);
+    firmaCtx.fillStyle = '#ffffff';
+    firmaCtx.fillRect(0, 0, r.width, r.height);
+    firmaTieneTrazo = false;
+  };
 }
 // hidden input para formaPago
 (function(){
@@ -563,7 +638,6 @@ async function genPDF() {
   const lugarEntrega = document.getElementById('lugarEntrega').value;
   const proveedor = document.getElementById('proveedor').value;
   const concepto = document.getElementById('concepto').value;
-  const otNum = ''; // Campo quitado del formulario; se mantiene vacío para no mover columnas en Sheets
   const proyecto = document.getElementById('proyecto').value;
   const responsable = document.getElementById('responsable').value;
   const firmaElaboraTipo = document.getElementById('firmaElaboraTipo').value;
@@ -692,34 +766,29 @@ async function genPDF() {
     doc.setFontSize(fc.size);
     doc.text(fc.text, cA+2, y+5);
   }
-  fill(AZC); rect(midx, y, (cEND-midx)/2, 7); thin(); rect(midx, y, (cEND-midx)/2, 7, 'S');
-  doc.setFont('helvetica','bold'); doc.setFontSize(8);
-  doc.text('O.T. No.', midx+2, y+5);
-  doc.setFont('helvetica','normal');
+  fill(BLN); rect(midx, y, cEND-midx, 7); thin(); rect(midx, y, cEND-midx, 7, 'S');
   {
-    const otAvailW = (cEND-midx)/2 - 18 - 2;
-    const fo = fitText(otNum, otAvailW, 8, 5);
-    doc.setFontSize(fo.size);
-    doc.text(fo.text, midx+18, y+5);
-  }
-  fill(BLN); rect(midx+(cEND-midx)/2, y, (cEND-midx)/2, 7); thin(); rect(midx+(cEND-midx)/2, y, (cEND-midx)/2, 7, 'S');
-  {
-    const pAvailW = (cEND-midx)/2 - 4;
-    const fpr = fitText(proyecto, pAvailW, 8, 5);
+    const pAvailW = (cEND-midx) - 4;
+    const fpr = fitText(proyecto, pAvailW, 9, 6);
     doc.setFontSize(fpr.size);
-    doc.text(fpr.text, midx+(cEND-midx)/2+2, y+5);
+    doc.text(fpr.text, midx+2, y+5);
   }
   y += 7;
-  fill(AZC); rect(midx, y, (cEND-midx)/2, 7); thin(); rect(midx, y, (cEND-midx)/2, 7, 'S');
-  doc.setFont('helvetica','bold'); doc.setFontSize(8);
-  doc.text('Nombre', midx+2, y+5);
-  doc.setFont('helvetica','normal');
-  fill(BLN); rect(midx+(cEND-midx)/2, y, (cEND-midx)/2, 7); thin(); rect(midx+(cEND-midx)/2, y, (cEND-midx)/2, 7, 'S');
+  const solLblW = 42;
+  fill(AZC); rect(midx, y, solLblW, 7); fill(BLN); rect(midx+solLblW, y, cEND-midx-solLblW, 7);
+  thin(); rect(midx, y, cEND-midx, 7, 'S');
+  doc.setFont('helvetica','bold');
   {
-    const nAvailW = (cEND-midx)/2 - 4;
+    const fsl = fitText('Quien solicita y área', solLblW-3, 7, 5);
+    doc.setFontSize(fsl.size);
+    doc.text(fsl.text, midx+1.5, y+5);
+  }
+  doc.setFont('helvetica','normal');
+  {
+    const nAvailW = (cEND-midx-solLblW) - 4;
     const fn = fitText(responsable, nAvailW, 8, 5);
     doc.setFontSize(fn.size);
-    doc.text(fn.text, midx+(cEND-midx)/2+2, y+5);
+    doc.text(fn.text, midx+solLblW+2, y+5);
   }
   y += 9;
 
@@ -964,13 +1033,22 @@ async function genPDF() {
     try { doc.addImage(FIRMA_F, 'JPEG', cA + (fw-sigW)/2, fy, sigW, sigH); } catch(e) {}
     nombreElabora = 'FRANCISCO RAMIREZ';
   } else {
-    // Firma escrita a mano (simulada con letra cursiva azul)
     nombreElabora = (firmaOtroNombre || '').toUpperCase();
-    doc.setTextColor(AZUL_FIRMA[0], AZUL_FIRMA[1], AZUL_FIRMA[2]);
-    doc.setFont('helvetica', 'bolditalic');
-    doc.setFontSize(20);
-    doc.text(firmaOtroNombre || '', cA+fw/2, fy+sigH/2+4, {align:'center', angle:-5});
-    txtc(NGR);
+    const canvasFirma = document.getElementById('firmaCanvas');
+    if (canvasFirma && firmaTieneTrazo) {
+      // Usa el dibujo real hecho a mano en el recuadro
+      try {
+        const dataUrlFirma = canvasFirma.toDataURL('image/png');
+        doc.addImage(dataUrlFirma, 'PNG', cA + (fw-sigW)/2, fy, sigW, sigH);
+      } catch(e) {}
+    } else {
+      // Respaldo: si no dibujaron nada, se simula con letra cursiva azul
+      doc.setTextColor(AZUL_FIRMA[0], AZUL_FIRMA[1], AZUL_FIRMA[2]);
+      doc.setFont('helvetica', 'bolditalic');
+      doc.setFontSize(20);
+      doc.text(firmaOtroNombre || '', cA+fw/2, fy+sigH/2+4, {align:'center', angle:-5});
+      txtc(NGR);
+    }
   }
   thk(); doc.line(cA+2, fy+sigH+2, cA+fw-4, fy+sigH+2);
   doc.setFont('helvetica','normal'); doc.setFontSize(8);
