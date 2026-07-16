@@ -689,15 +689,16 @@ async function genPDF() {
   y += 18;
 
   function labelValRow(label1, val1, label2, val2, rowY, h=7) {
-    fill(AZC); rect(cA, rowY, 90, h);
-    fill(BLN); rect(cA+90, rowY, 0, h);
-    thin(); rect(cA, rowY, (cEND-cA)/2 -1, h, 'S');
-    thin(); rect(cA+(cEND-cA)/2, rowY, (cEND-cA)/2, h, 'S');
+    const halfW = (cEND-cA)/2;
+    fill(AZC); rect(cA, rowY, halfW-1, h);
+    fill(AZC); rect(cA+halfW, rowY, halfW, h);
+    thin(); rect(cA, rowY, halfW-1, h, 'S');
+    thin(); rect(cA+halfW, rowY, halfW, h, 'S');
     doc.setFont('helvetica','bold'); doc.setFontSize(8); txtc(NGR);
     doc.text(label1, cA+2, rowY+h/2+1.5);
     doc.setFont('helvetica','normal');
     doc.text(String(val1||''), cA+2+doc.getTextWidth(label1)+3, rowY+h/2+1.5);
-    const mid = cA+(cEND-cA)/2;
+    const mid = cA+halfW;
     doc.setFont('helvetica','bold');
     doc.text(label2, mid+2, rowY+h/2+1.5);
     doc.setFont('helvetica','normal');
@@ -1025,13 +1026,13 @@ async function genPDF() {
   const fy = y;
   const AZUL_FIRMA = [20, 20, 180];
 
-  let nombreElabora = 'VERONICA MARIEL ROBLES LIRA';
+  let nombreElabora = 'VERÓNICA MARIEL ROBLES LIRA';
   if (firmaElaboraTipo === 'mariel') {
     try { doc.addImage(FIRMA_M, 'JPEG', cA + (fw-sigW)/2, fy, sigW, sigH); } catch(e) {}
-    nombreElabora = 'VERONICA MARIEL ROBLES LIRA';
+    nombreElabora = 'VERÓNICA MARIEL ROBLES LIRA';
   } else if (firmaElaboraTipo === 'francisco') {
     try { doc.addImage(FIRMA_F, 'JPEG', cA + (fw-sigW)/2, fy, sigW, sigH); } catch(e) {}
-    nombreElabora = 'FRANCISCO RAMIREZ';
+    nombreElabora = 'FRANCISCO RAMÍREZ ZARIÑANA';
   } else {
     nombreElabora = (firmaOtroNombre || '').toUpperCase();
     const canvasFirma = document.getElementById('firmaCanvas');
@@ -1062,7 +1063,7 @@ async function genPDF() {
   doc.setFont('helvetica','normal');
   doc.text('Revisado:', jx+2, fy+sigH+7);
   doc.setFont('helvetica','bold');
-  doc.text('JOSE LUIS ESTRADA GARCIA', jx+fw/2, fy+sigH+12, {align:'center', maxWidth: fw-6});
+  doc.text('JOSÉ LUIS ESTRADA GARCÍA', jx+fw/2, fy+sigH+12, {align:'center', maxWidth: fw-6});
 
   const kx = cA+fw*2;
   doc.line(kx+2, fy+sigH+2, kx+fw-4, fy+sigH+2);
