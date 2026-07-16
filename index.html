@@ -171,24 +171,14 @@
     <input type="text" id="proveedor" placeholder="Nombre del proveedor">
     <label>Concepto del pago</label>
     <input type="text" id="concepto" placeholder="Ej. Componentes">
-    <div class="row2">
-      <div>
-        <label>O.T. No.</label>
-        <input type="text" id="otNum" placeholder="Ej. 2883">
-      </div>
-      <div>
-        <label>Proyecto</label>
-        <input type="text" id="proyecto" placeholder="Ej. Veracruz" list="proyectosGuardados" oninput="onProyectoInput()">
-        <datalist id="proyectosGuardados"></datalist>
-      </div>
-    </div>
+    <label>Proyecto</label>
+    <input type="text" id="proyecto" placeholder="Ej. Veracruz" list="proyectosGuardados" oninput="onProyectoInput()">
+    <datalist id="proyectosGuardados"></datalist>
     <label>Siglas del proyecto (define el folio, ej. VER, CR)</label>
     <input type="text" id="proyectoSiglas" placeholder="VER" maxlength="10" oninput="onSiglasInput()">
     <div id="siglasHint" style="font-size:12px;color:#666;margin-top:4px;">El folio se calcula por separado para cada proyecto.</div>
-    <label>Nombre de quien solicita</label>
-    <input type="text" id="responsable" placeholder="Nombre de quien solicita">
-    <label>Área que solicita</label>
-    <input type="text" id="area" placeholder="Ej. Infraestructura">
+    <label>Nombre y área de quien solicita</label>
+    <input type="text" id="responsable" placeholder="Ej. Juan Pérez - Infraestructura">
   </div>
 
   <!-- 3. Factura / Cotización -->
@@ -573,10 +563,9 @@ async function genPDF() {
   const lugarEntrega = document.getElementById('lugarEntrega').value;
   const proveedor = document.getElementById('proveedor').value;
   const concepto = document.getElementById('concepto').value;
-  const otNum = document.getElementById('otNum').value;
+  const otNum = ''; // Campo quitado del formulario; se mantiene vacío para no mover columnas en Sheets
   const proyecto = document.getElementById('proyecto').value;
   const responsable = document.getElementById('responsable').value;
-  const area = document.getElementById('area').value;
   const firmaElaboraTipo = document.getElementById('firmaElaboraTipo').value;
   const firmaOtroNombre = document.getElementById('firmaOtroNombre').value;
   const numFactura = document.getElementById('numFactura').value;
@@ -728,8 +717,7 @@ async function genPDF() {
   fill(BLN); rect(midx+(cEND-midx)/2, y, (cEND-midx)/2, 7); thin(); rect(midx+(cEND-midx)/2, y, (cEND-midx)/2, 7, 'S');
   {
     const nAvailW = (cEND-midx)/2 - 4;
-    const nombreCompleto = responsable + (area ? ' — ' + area : '');
-    const fn = fitText(nombreCompleto, nAvailW, 8, 5);
+    const fn = fitText(responsable, nAvailW, 8, 5);
     doc.setFontSize(fn.size);
     doc.text(fn.text, midx+(cEND-midx)/2+2, y+5);
   }
@@ -1127,9 +1115,8 @@ async function generar() {
       proveedor,
       proyecto: document.getElementById('proyecto').value,
       concepto: document.getElementById('concepto').value,
-      otNum: document.getElementById('otNum').value,
+      otNum: '', // Campo quitado del formulario; se manda vacío para no mover columnas en Sheets
       responsable: document.getElementById('responsable').value,
-      area: document.getElementById('area').value,
       lugarEntrega: document.getElementById('lugarEntrega').value,
       numFactura: document.getElementById('numFactura').value,
       moneda, tipoCambio,
