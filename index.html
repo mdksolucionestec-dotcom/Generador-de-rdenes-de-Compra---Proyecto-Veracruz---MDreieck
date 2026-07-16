@@ -87,12 +87,17 @@
   .toggle-btn.sel { border-color: #1a1080; background: #1a1080; color: #fff; }
   .partida-row {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr auto;
+    grid-template-columns: 2fr 1fr 1fr 1fr auto auto;
     gap: 6px;
     margin-bottom: 8px;
     align-items: center;
   }
   .partida-row input { padding: 8px; font-size: 13px; }
+  .chk-noiva {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 11px; color: #555; white-space: nowrap;
+  }
+  .chk-noiva input { width: 15px; height: 15px; padding: 0; }
   .del-partida {
     background: #ffe4e4; color: #c0392b; border: none; border-radius: 6px;
     width: 32px; height: 32px; cursor: pointer; font-size: 16px; font-weight: bold;
@@ -206,14 +211,10 @@
     <h2>4. Forma de pago</h2>
     <div class="toggle-group">
       <div class="toggle-btn sel" id="btnTransf" onclick="selFormaPago('Transferencia', this)">Transferencia</div>
-      <div class="toggle-btn" id="btnCheque" onclick="selFormaPago('Cheque', this)">Cheque</div>
-      <div class="toggle-btn" id="btnContado" onclick="selFormaPago('Contado', this)">Contado</div>
+      <div class="toggle-btn" id="btnEfectivo" onclick="selFormaPago('Efectivo', this)">Efectivo</div>
+      <div class="toggle-btn" id="btnEnLinea" onclick="selFormaPago('En línea', this)">En línea</div>
     </div>
     <input type="hidden" id="formaPago" value="Transferencia">
-    <div id="campoCheque" style="display:none;">
-      <label>Número de cheque</label>
-      <input type="text" id="numCheque">
-    </div>
     <label>Banco</label>
     <input type="text" id="banco" placeholder="Ej. Santander">
     <div class="row2">
@@ -326,6 +327,12 @@ function onProyectoInput() {
   if (match) {
     document.getElementById('proyectoSiglas').value = map[match];
     onSiglasInput();
+  } else if (nombre) {
+    // Autocalcula las siglas con las primeras 3 letras del nombre del proyecto
+    const auto = nombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 3);
+    document.getElementById('proyectoSiglas').value = auto;
+    onSiglasInput();
   }
 }
 
@@ -382,9 +389,8 @@ function selMoneda(m, el) {
 /* ===================== FORMA DE PAGO ===================== */
 function selFormaPago(fp, el) {
   document.getElementById('formaPago').value = fp;
-  document.querySelectorAll('#btnTransf,#btnCheque,#btnContado').forEach(b => b.classList.remove('sel'));
+  document.querySelectorAll('#btnTransf,#btnEfectivo,#btnEnLinea').forEach(b => b.classList.remove('sel'));
   if (el) el.classList.add('sel');
-  document.getElementById('campoCheque').style.display = (fp === 'Cheque') ? 'block' : 'none';
 }
 // hidden input para formaPago
 (function(){
@@ -403,6 +409,7 @@ function addPartidaRow(desc='', cant='', pu='') {
     <input type="number" class="pc" placeholder="Cant." value="${cant}" oninput="calcTot()">
     <input type="number" class="pu" placeholder="P. Unitario" value="${pu}" oninput="calcTot()">
     <input type="text" class="pi" placeholder="Importe" readonly>
+    <label class="chk-noiva"><input type="checkbox" class="pnoiva" onchange="calcTot()">Sin IVA</label>
     <button class="del-partida" onclick="this.parentElement.remove(); calcTot();">×</button>
   `;
   document.getElementById('partidasContainer').appendChild(div);
@@ -414,21 +421,26 @@ function fmt(n) {
 }
 
 function calcTot() {
-  let s = 0;
+  let sGrav = 0, sExento = 0;
   document.querySelectorAll('.partida-row').forEach(r => {
     const c = parseFloat(r.querySelector('.pc').value) || 0;
     const u = parseFloat(r.querySelector('.pu').value) || 0;
+    const noIva = r.querySelector('.pnoiva').checked;
     const imp = c * u;
     r.querySelector('.pi').value = fmt(imp);
-    s += imp;
+    if (noIva) sExento += imp; else sGrav += imp;
   });
+  const s = sGrav + sExento;
   const moneda = document.getElementById('moneda')?.value || 'MXN';
   const tc = parseFloat(document.getElementById('tipoCambio')?.value) || 17.50;
-  const sMXN = moneda === 'USD' ? s * tc : s;
+  const factor = moneda === 'USD' ? tc : 1;
+  const sMXN = s * factor;
+  const ivaMXN = (sGrav * factor) * 0.16;
+  const totalMXN = sMXN + ivaMXN;
   document.getElementById('dSub').textContent = fmt(s) + (moneda === 'USD' ? ' USD' : '');
-  document.getElementById('dIva').textContent = fmt(sMXN * .16) + ' MXN';
-  document.getElementById('dTot').textContent = fmt(sMXN * 1.16) + ' MXN';
-  document.getElementById('letraPreview').textContent = 'Importe con letra: ' + n2l(sMXN * 1.16);
+  document.getElementById('dIva').textContent = fmt(ivaMXN) + ' MXN';
+  document.getElementById('dTot').textContent = fmt(totalMXN) + ' MXN';
+  document.getElementById('letraPreview').textContent = 'Importe con letra: ' + n2l(totalMXN);
 }
 
 /* ===================== NUMERO A LETRA (ESPAÑOL / PESOS) ===================== */
@@ -541,7 +553,6 @@ async function genPDF() {
   const moneda = document.getElementById('moneda').value;
   const tipoCambio = parseFloat(document.getElementById('tipoCambio')?.value) || 17.50;
   const formaPago = document.getElementById('formaPago').value;
-  const numCheque = document.getElementById('numCheque')?.value || '';
   const banco = document.getElementById('banco').value;
   const sucursal = document.getElementById('sucursal').value;
   const numCuenta = document.getElementById('numCuenta').value;
@@ -549,19 +560,23 @@ async function genPDF() {
   const comentarios = document.getElementById('comentarios').value;
 
   let partidas = [];
-  let subtotal = 0;
+  let subtotal = 0, subtotalGrav = 0;
   document.querySelectorAll('.partida-row').forEach(r => {
     const d = r.querySelector('.pd').value;
     const c = parseFloat(r.querySelector('.pc').value) || 0;
     const u = parseFloat(r.querySelector('.pu').value) || 0;
+    const noIva = r.querySelector('.pnoiva').checked;
     if (d || c || u) {
-      partidas.push({desc:d, cant:c, pu:u, importe:c*u});
-      subtotal += c*u;
+      const imp = c*u;
+      partidas.push({desc:d, cant:c, pu:u, importe:imp, noIva:noIva});
+      subtotal += imp;
+      if (!noIva) subtotalGrav += imp;
     }
   });
-  const subtotalMXN = moneda === 'USD' ? subtotal * tipoCambio : subtotal;
-  const iva = subtotalMXN * 0.16;
-  const total = subtotalMXN * 1.16;
+  const factorMXN = moneda === 'USD' ? tipoCambio : 1;
+  const subtotalMXN = subtotal * factorMXN;
+  const iva = (subtotalGrav * factorMXN) * 0.16;
+  const total = subtotalMXN + iva;
 
   let y = 10;
 
@@ -738,16 +753,14 @@ async function genPDF() {
   y += 6;
 
   // Cheque / Transferencia / Credito / Contado
-  const fw4b = (cEND-cA)/4;
-  fill(BLN); rect(cA, y, fw4b-1, 7); thin(); rect(cA, y, fw4b-1, 7,'S');
+  const fw3b = (cEND-cA)/3;
+  fill(BLN); rect(cA, y, fw3b-1, 7); thin(); rect(cA, y, fw3b-1, 7,'S');
   doc.setFont('helvetica','normal'); doc.setFontSize(8);
-  doc.text('Cheque No. ' + (numCheque||''), cA+2, y+5);
-  fill(BLN); rect(cA+fw4b, y, fw4b-1, 7); thin(); rect(cA+fw4b, y, fw4b-1, 7,'S');
-  doc.text('Transferencia ' + (formaPago==='Transferencia'?'X':''), cA+fw4b+2, y+5);
-  fill(BLN); rect(cA+fw4b*2, y, fw4b-1, 7); thin(); rect(cA+fw4b*2, y, fw4b-1, 7,'S');
-  doc.text('Crédito / Días', cA+fw4b*2+2, y+5);
-  fill(BLN); rect(cA+fw4b*3, y, fw4b-1, 7); thin(); rect(cA+fw4b*3, y, fw4b-1, 7,'S');
-  doc.text('Contado ' + (formaPago==='Contado'?'X':''), cA+fw4b*3+2, y+5);
+  doc.text('Transferencia ' + (formaPago==='Transferencia'?'X':''), cA+2, y+5);
+  fill(BLN); rect(cA+fw3b, y, fw3b-1, 7); thin(); rect(cA+fw3b, y, fw3b-1, 7,'S');
+  doc.text('Efectivo ' + (formaPago==='Efectivo'?'X':''), cA+fw3b+2, y+5);
+  fill(BLN); rect(cA+fw3b*2, y, fw3b-1, 7); thin(); rect(cA+fw3b*2, y, fw3b-1, 7,'S');
+  doc.text('En línea ' + (formaPago==='En línea'?'X':''), cA+fw3b*2+2, y+5);
   y += 10;
 
   // Datos bancarios
@@ -835,7 +848,8 @@ async function genPDF() {
     doc.text(String(i+1), cA+2, y+4.3);
     if (p) {
       doc.text(String(p.cant), cB+2, y+4.3);
-      doc.text((p.desc||'').substring(0,45), cC+2, y+4.3);
+      const descTxt = (p.desc||'') + (p.noIva ? ' (Sin IVA)' : '');
+      doc.text(descTxt.substring(0,45), cC+2, y+4.3);
       doc.text('$'+p.pu.toLocaleString('es-MX',{minimumFractionDigits:2}), cF+2, y+4.3);
       doc.setFont('helvetica','bold');
       doc.text('$'+p.importe.toLocaleString('es-MX',{minimumFractionDigits:2}), cH+2, y+4.3);
@@ -1011,21 +1025,25 @@ async function generar() {
     const pdfName = `${ocNum}_${prov}.pdf`;
 
     let partidas = [];
-    let subtotal = 0;
+    let subtotal = 0, subtotalGrav = 0;
     document.querySelectorAll('.partida-row').forEach(r => {
       const d = r.querySelector('.pd').value;
       const c = parseFloat(r.querySelector('.pc').value) || 0;
       const u = parseFloat(r.querySelector('.pu').value) || 0;
+      const noIva = r.querySelector('.pnoiva').checked;
       if (d || c || u) {
-        partidas.push({desc:d, cant:c, pu:u, importe:c*u});
-        subtotal += c*u;
+        const imp = c*u;
+        partidas.push({desc:d, cant:c, pu:u, importe:imp, noIva:noIva});
+        subtotal += imp;
+        if (!noIva) subtotalGrav += imp;
       }
     });
     const moneda = document.getElementById('moneda').value;
     const tipoCambio = parseFloat(document.getElementById('tipoCambio')?.value) || 17.50;
-    const subtotalMXN = moneda === 'USD' ? subtotal * tipoCambio : subtotal;
-    const iva = subtotalMXN * 0.16;
-    const total = subtotalMXN * 1.16;
+    const factorMXN = moneda === 'USD' ? tipoCambio : 1;
+    const subtotalMXN = subtotal * factorMXN;
+    const iva = (subtotalGrav * factorMXN) * 0.16;
+    const total = subtotalMXN + iva;
 
     async function fileToPayload(f) {
       if (!f) return null;
